@@ -8,6 +8,6 @@ namespace MyLandmark.Models
 {
     public class MLMContext:DbContext
     {
-        DbSet<Landmark> Landmarks { get; set;}
+        public DbSet<Landmark> Landmarks { get; set;}
     }
 }
