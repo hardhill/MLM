@@ -15,7 +15,7 @@ namespace MyLandmark
         {
             AreaRegistration.RegisterAllAreas();
             RouteConfig.RegisterRoutes(RouteTable.Routes);
-            Database.SetInitializer(new MLMDbInitializer());
+            //Database.SetInitializer(new MLMDbInitializer());
         }
     }
 }

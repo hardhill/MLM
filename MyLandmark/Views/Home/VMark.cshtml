@@ -1,17 +1,277 @@
-﻿
+﻿@using MyLandmark.Models
+@model IEnumerable<Landmark>
 @{
     Layout = null;
 }
 
 <!DOCTYPE html>
-
-<html>
+<html lang="ru">
 <head>
     <meta name="viewport" content="width=device-width" />
-    <title>VMark</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My landmarks</title>
+    <link rel="stylesheet" href="~/Content/lib/bootstrap-4.0.0-alpha.6-dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/Content/css/main.css" />
+    <script src="https://code.jquery.com/jquery-3.1.1.slim.min.js"
+            integrity="sha384-A7FZj7v+d/sdmMqp/nOQwliLvUsJfDHW+k9Omg/a/EheAdgtzNs3hpfag6Ed950n"
+            crossorigin="anonymous"></script>
+<script>
+    var map;
+    var markers = [];
+    var usermarks = [];
+    var modeFormButton = { modeNew: 0, modeEdit: 1 }
+    var iconBase = 'https://maps.gstatic.com/mapfiles/ms2/micons/';
+    var defaulticonurl = iconBase + 'red-dot.png';
+    var editicon = iconBase + 'yellow-dot.png';
+    var newicon = iconBase + 'blue.png';
+
+
+    function initMap() {
+        var myLatlng = { lat: 51.871491, lng: 107.731951 };
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: myLatlng,
+            zoom: 15,
+            mapTypeControl: true,
+            mapTypeControlOptions: {
+                style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+                mapTypeIds: [
+                    google.maps.MapTypeId.SATELLITE,
+                    google.maps.MapTypeId.ROADMAP,
+                    google.maps.MapTypeId.TERRAIN
+                ]
+            },
+            mapTypeId: google.maps.MapTypeId.SATELLITE
+        });
+
+        map.addListener('click', function (e) {
+            placeMarkerAndPanTo(e.latLng, map);
+            placeMarkerAndFields(e.latLng, map);
+            setButton(modeFormButton.modeNew)
+            viewMarker(usermarks)
+            viewNewMarker(markers)
+        });
+        createMarkersfromData();
+        //показать маркер новый
+        viewNewMarker(markers)
+        //показать маркеры из БД
+        viewMarker(usermarks)
+
+    }
+    function placeMarkerAndPanTo(latLng, map) {
+
+        // создать маркер
+        var marker = new google.maps.Marker({
+            position: latLng
+        });
+        //
+        markers.forEach(function (item, i, markers) {
+            item.setMap(null);
+        })
+        markers = [];
+        markers.push(marker);
+
+        window.setTimeout(function () {
+            map.panTo(marker.getPosition());
+        }, 1000);
+    }
+
+    function placeMarkerAndFields(latLng, map) {
+        var lnmarker = markers.length;
+        if (lnmarker > 0) {
+            var lastmrk = markers[lnmarker - 1]
+            var ll = lastmrk.getPosition();
+            document.getElementById('txtdescription').value = '';
+            var txt1 = document.getElementById('txtlati');
+            var txt2 = document.getElementById('txtlongi');
+            txt1.value = ll.lat();
+            txt2.value = ll.lng();
+        }
+    }
+    function setButton(modeForm) {
+        var m = modeForm;
+        switch (m) {
+            case 0:
+                document.getElementById('bAdd').disabled = false;
+                document.getElementById('bEdit').disabled = true;
+                document.getElementById('bDelete').disabled = true;
+                break;
+            case 1:
+                document.getElementById('bAdd').disabled = true;
+                document.getElementById('bEdit').disabled = false;
+                document.getElementById('bDelete').disabled = false;
+                break;
+            default:
+                break;
+        }
+    }
+    function addData() {
+        var d = document.getElementById('txtdescription').value;
+        var lat = document.getElementById('txtlati').value;
+        var lng = document.getElementById('txtlongi').value;
+        var frm = document.getElementById('frmMarker');
+        frm.method = 'POST';
+        frm.action = '/add/';
+        frm.submit();
+    }
+    function updateData() {
+        var frm = document.getElementById('frmMarker');
+        frm.method = 'POST';
+        frm.action = '/update/';
+        frm.submit();
+    }
+    function deleteData() {
+        var frm = document.getElementById('frmMarker');
+        frm.method = 'POST';
+        frm.action = '/del/';
+        frm.submit();
+    }
+
+
+    function createMarkersfromData() {
+        // наполнение массива маркеров из БД
+        usermarks = [];
+        @*@foreach (Landmark marker in Model) {
+                var mlat = marker.Latitude;
+                var mlng = marker.Longitude;
+                var mylatlng = { lat: mlat, lng: mlng };
+            var mrk = new google.maps.Marker();
+            mrk.setPosition(mylatlng);
+            //к маркеру приписывается идентификатор маркера из БД
+            mrk.customInfo = marker.Id;
+            //замена всех &quot; в строке на кавычку с помощью рег. выражения /&quot;/g
+            mrk.setTitle(' marker.description '.replace(/ &quot;/ g, '"'));
+            usermarks.push(mrk);
+        }*@
+
+        }
+        function viewMarker(mks) {
+            mks.forEach(function (item, i, mks) {
+                item.setMap(map);
+                item.setIcon(defaulticonurl);
+                item.addListener('click', function () {
+                    deleteNewMarker(markers);
+                    var markerPos = item.getPosition();
+                    setUsertIcon(mks, defaulticonurl);
+                    item.setIcon(editicon);
+                    document.getElementById('txtdescription').value = item.getTitle();
+                    document.getElementById('txtlati').value = item.getPosition().lat();
+                    document.getElementById('txtlongi').value = item.getPosition().lng();
+                    document.getElementById('idmarker').value = item['customInfo'];
+                    // установить режим редактирования маркера
+                    setButton(modeFormButton.modeEdit);
+                });
+            });
+        }
+        function viewNewMarker(mks) {
+            mks.forEach(function (item, i, mks) {
+                item.setMap(map);
+                item.setIcon(newicon);
+                item.addListener('click', function () {
+                    var markerPos = item.getPosition();
+                });
+            });
+        }
+        function setUsertIcon(markers, urlicon) {
+            markers.forEach(function (item, i, allmarkers) {
+                item.setIcon(urlicon);
+            })
+        }
+        function deleteNewMarker(mks) {
+            mks.forEach(function (item, i, mks) {
+                item.setMap(null);
+            });
+            mks = [];
+        }
+        function addMarker(idmark,name,latitude, longitude) {
+            var mlat = latitude;
+            var mlng = longitude;
+            var mylatlng = { lat: mlat, lng: mlng };
+            var mrk = new google.maps.Marker();
+            mrk.setPosition(mylatlng);
+            //к маркеру приписывается идентификатор маркера из БД
+            mrk.customInfo = idmark;
+            //замена всех &quot; в строке на кавычку с помощью рег. выражения /&quot;/g
+            mrk.setTitle(' marker.description '.replace(/ &quot;/ g, '"'));
+            usermarks.push(mrk);
+        }
+        $('[data-marker]').each(function () {
+            var markerData = $(this).data('marker');
+            addMarker(markerData.Id, markerData.Name, markerData.Latitude, markerData.Longitude);
+        });
+
+</script>
 </head>
-<body>
-    <div> 
+<body onload="initMap()">
+    
+    <header>
+        <nav class="navbar sticky-top navbar-inverse bg-inverse">
+            <a class="navbar-brand" href="{% url 'mld:index' %}">
+                <img src="{% static 'img/logo.png' %}" width="30" height="30" class="d-inline-block align-top" alt="">
+                My landmarks
+            </a>
+        </nav>
+
+    </header>
+    <div class="container">
+        <div class="card p-2">
+            <div class="card-header">
+                <h3>Marker data</h3>
+            </div>
+            <div class="card-block">
+                <form id="frmMarker">
+                    
+                    <div class="form-group">
+                        <label for="txtdescription">Description</label>
+                        <input type="text" class="form-control" id="txtdescription" aria-describedby="descrHelp"
+                               maxlength="200" name="txtdescr" required>
+                        <small id="descrHelp" class="form-text text-muted">Click on the map and input point description.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="txtlati">Latitude</label>
+                        <input type="text" class="form-control" id="txtlati" aria-describedby="latiHelp" name="txtlat"
+                               readonly>
+                        <small id="latiHelp" class="form-text text-muted">
+                            the value of this field is determined by the
+                            position
+                            marker on the map
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="txtlongi">Longitude</label>
+                        <input type="number" class="form-control" id="txtlongi" aria-describedby="longiHelp" name="txtlng"
+                               readonly>
+                        <small id="longiHelp" class="form-text text-muted">
+                            the value of this field is determined by the
+                            position
+                            marker on the map
+                        </small>
+                    </div>
+                    <input type="hidden" id="idmarker" name="id" />
+                </form>
+            </div>
+            <div class="card-footer">
+                <button id="bAdd" class="button" form="frmMarker" onclick="addData()">Add</button>
+                <button id="bEdit" class="button" form="frmMarker" onclick="updateData()">Edit</button>
+                <button id="bDelete" class="button" form="frmMarker" onclick="deleteData()">Delete</button>
+            </div>
+        </div>
     </div>
+    @foreach(Landmark item in Model)
+    {
+        <div data-mark="@Json.Encode(item)"/>
+    }
+    <div id="map" style="width: 100%; height: 600px;"></div>
+
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js"
+            integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb"
+            crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js"
+            integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn"
+            crossorigin="anonymous"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCI-xDAIte2eH2mehinBidaFHm3WhUkHAk&callback=initMap"
+            async defer></script>
 </body>
 </html>

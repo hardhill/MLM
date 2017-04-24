@@ -24,7 +24,7 @@ namespace MyLandmark.Controllers
             db.Landmarks.Load();
             IEnumerable<Landmark> landmarks = db.Landmarks;
             
-            return View();
+            return View(landmarks);
         }
     }
 }
